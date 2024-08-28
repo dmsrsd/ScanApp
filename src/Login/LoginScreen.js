@@ -18,7 +18,9 @@ export default LoginScreen = ({navigation}) => {
   const handleLogin = () => {
     if (username === 'admin' && password === '12345') {
       console.log('Login successful!');
-      navigation.navigate('TabNavigator', {screen: 'Home'});
+      // navigation.navigate('TabNavigator', {screen: 'Home'});
+      navigation.navigate('CombineNavigator', {screen: 'Home'});
+
     } else {
       setError('Invalid username or password');
     }

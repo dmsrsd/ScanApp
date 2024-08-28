@@ -9,7 +9,11 @@ import {
 } from 'react-native';
 import {TextInput, Divider, Icon, MD3Colors, Button} from 'react-native-paper';
 
-const OppKeeperScreen = () => {
+const ScanScreen = ({route}) => {
+  
+  // PARAM FROM HOME
+  // const { title } = route.params;
+
   const [poNumber, setPOnumber] = useState('12345');
   const [lotNumber, setLotNumber] = useState('56789');
 
@@ -309,7 +313,7 @@ const OppKeeperScreen = () => {
   );
 };
 
-export default OppKeeperScreen;
+export default ScanScreen;
 
 const styles = StyleSheet.create({
   textInp: {

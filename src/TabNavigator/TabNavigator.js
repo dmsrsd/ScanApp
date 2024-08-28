@@ -1,18 +1,10 @@
 import {createMaterialBottomTabNavigator} from 'react-native-paper/react-navigation';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
-import {View, Text, LogBox } from 'react-native';
+import {View, Text, LogBox} from 'react-native';
 
 import HomeScreen from '../Home/HomeScreen';
-import OrderScreen from '../Order/OrderScreen';
-
-function MyOrderScreen() {
-  return (
-    <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
-      <Text>My Order</Text>
-    </View>
-  );
-}
+// import OrderScreen from '../Order/OrderScreen';
 
 function Message() {
   return (
@@ -33,12 +25,13 @@ function ProfileScreen() {
 const Tab = createMaterialBottomTabNavigator();
 
 const TabNavigator = () => {
-  LogBox.ignoreLogs(['A props object containing a "key" prop is being spread into JSX']);
-  
+  LogBox.ignoreLogs([
+    'A props object containing a "key" prop is being spread into JSX',
+  ]);
+
   return (
     <Tab.Navigator>
       <Tab.Screen
-        // key="home"
         name="Home"
         component={HomeScreen}
         options={{
@@ -48,20 +41,18 @@ const TabNavigator = () => {
         }}
       />
 
-      <Tab.Screen
+      {/* <Tab.Screen
         name="Order"
-        // key="order"
         component={OrderScreen}
         options={{
           tabBarIcon: ({color}) => (
             <MaterialCommunityIcons name="newspaper" color={color} size={26} />
           ),
         }}
-      />
+      /> */}
 
       <Tab.Screen
         name="Message"
-        // key="message"
         component={Message}
         options={{
           tabBarIcon: ({color}) => (
@@ -76,7 +67,6 @@ const TabNavigator = () => {
 
       <Tab.Screen
         name="Profile"
-        // key="profile"
         component={ProfileScreen}
         options={{
           tabBarIcon: ({color}) => (
