@@ -16,12 +16,16 @@ import {
 import React, {useState, useEffect} from 'react';
 import {TextInput, Icon, Portal, Modal, Button} from 'react-native-paper';
 import {Dropdown} from 'react-native-element-dropdown';
-import {baseURL} from '../utils/url';
+import {baseURL} from '../../utils/url';
 
 import {useSelector, useDispatch} from 'react-redux';
-import {setItem} from '../Redux/Reducers/OutstandingSlice';
+import {setItem} from '../../Redux/Reducers/OutstandingSlice';
 
-export default function ScannerScreen() {
+import useDisableBackButton from '../../utils/useDisableBackButton';
+
+export default function ScanItem({route, navigation}) {
+  useDisableBackButton('Anda tidak dapat kembali dari halaman ini.');
+  const param = route.params;
   const dispatch = useDispatch();
 
   // REDUX DATA
@@ -33,6 +37,8 @@ export default function ScannerScreen() {
   const {inbound_planning_no, checker} = itemOrderList || {};
 
   useEffect(() => {
+    console.log('param', param);
+
     if (!itemVehicle) {
       setLoadingSKU(false);
     } else {
@@ -336,11 +342,12 @@ export default function ScannerScreen() {
           throw new Error(
             JSON.stringify(result.errors) || JSON.stringify(result.message),
           );
+        } else {
+          Alert.alert('Success', 'Data posted successfully!');
+          navigation.navigate('InboundNavigator', {
+            screen: 'OrderList',
+          });
         }
-
-        Alert.alert('Success', 'Data posted successfully!');
-
-        await fetchSKUs();
       } catch (error) {
         // console.error('Error:', error.message); // Log pesan error
         Alert.alert('Error', 'Failed to post data. ' + error.message);
@@ -349,7 +356,7 @@ export default function ScannerScreen() {
   };
 
   return (
-    <SafeAreaView>
+    <SafeAreaView style={{flex: 1, padding: 5}}>
       {loadingSKU ? (
         <View style={{top: 100}}>
           <ActivityIndicator size="large" color="#279EFF" />
@@ -361,30 +368,22 @@ export default function ScannerScreen() {
 
             <TextInput
               theme={theme}
-              label={
-                <Text style={{color: isFocused ? 'grey' : 'black'}}>
-                  Inbound Planning
-                </Text>
-              }
+              label={<Text style={{color: 'white'}}>Inbound Planning</Text>}
               value={inbound_planning_no}
               onFocus={handleFocus}
               onBlur={handleBlur}
-              textColor="black"
+              textColor="white"
               style={styles.txtInpPal}
               editable={false}
             />
 
             <TextInput
               theme={theme}
-              label={
-                <Text style={{color: isFocused ? 'grey' : 'black'}}>
-                  Vehicle No
-                </Text>
-              }
+              label={<Text style={{color: 'white'}}>Vehicle No</Text>}
               value={vehicle_no}
               onFocus={handleFocus}
               onBlur={handleBlur}
-              textColor="black"
+              textColor="white"
               style={styles.txtInpPal}
               editable={false}
             />
@@ -426,41 +425,29 @@ export default function ScannerScreen() {
                   style={{flexDirection: 'row', alignItems: 'center', top: 10}}>
                   <TextInput
                     theme={theme}
-                    label={
-                      <Text style={{color: isFocused ? 'grey' : 'black'}}>
-                        SKU
-                      </Text>
-                    }
+                    label={<Text style={{color: 'white'}}>SKU</Text>}
                     value={input.sku}
-                    textColor="black"
+                    textColor="white"
                     style={styles.txtInpSKU}
                     editable={false}
                   />
 
                   <TextInput
                     theme={theme}
-                    label={
-                      <Text style={{color: isFocused ? 'grey' : 'black'}}>
-                        Qty Plan
-                      </Text>
-                    }
+                    label={<Text style={{color: 'white'}}>Qty Plan</Text>}
                     value={input.qty.toString()}
                     onFocus={handleFocus}
                     onBlur={handleBlur}
-                    textColor="black"
+                    textColor="white"
                     style={styles.txtInpQTY}
                     editable={false}
                   />
 
                   <TextInput
                     theme={theme}
-                    label={
-                      <Text style={{color: isFocused ? 'grey' : 'black'}}>
-                        Outstanding
-                      </Text>
-                    }
+                    label={<Text style={{color: 'white'}}>Outstanding</Text>}
                     value={input.qty_outstanding}
-                    textColor="black"
+                    textColor="white"
                     style={styles.txtInpQTY}
                     editable={false}
                   />
@@ -491,6 +478,7 @@ export default function ScannerScreen() {
                         onFocus={handleFocus}
                         onBlur={handleBlur}
                         textColor="black"
+                        editable={param.param !== 'true'} 
                       />
                     </View>
 
@@ -511,6 +499,7 @@ export default function ScannerScreen() {
                         newInputs[skuIndex].bags[bagIndex].palletQty = text;
                         setInputsSKUPallets(newInputs);
                       }}
+                      editable={param.param !== 'true'}
                     />
 
                     <View style={{flexDirection: 'row', alignItems: 'center'}}>
@@ -581,26 +570,34 @@ export default function ScannerScreen() {
             ))}
           </View>
           <Text>{'\n'}</Text>
+          <Text>{'\n'}</Text>
 
-          <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
-            <Button
-              style={{width: 170, borderRadius: 10}}
-              mode="contained"
-              buttonColor="red"
-              textColor="white"
-              onPress={() => handleClear()}>
-              Clear
-            </Button>
+          {param.param === 'false' ? (
+            <View
+              style={{flexDirection: 'row', justifyContent: 'space-between'}}>
+              <Button
+                style={{width: 170, borderRadius: 10}}
+                mode="contained"
+                buttonColor="red"
+                textColor="white"
+                onPress={() => handleClear()}>
+                Clear
+              </Button>
 
-            <Button
-              style={{width: 170, borderRadius: 10}}
-              mode="contained"
-              buttonColor="green"
-              textColor="white"
-              onPress={() => saveScan()}>
-              Save
-            </Button>
-          </View>
+              <Button
+                style={{width: 170, borderRadius: 10}}
+                mode="contained"
+                buttonColor="green"
+                textColor="white"
+                onPress={() => saveScan()}>
+                Save
+              </Button>
+            </View>
+          ) : (
+            <>
+              <Text style={{color: 'black'}}>Sudah Di Scan Semua</Text>
+            </>
+          )}
 
           <Text>{'\n'}</Text>
         </ScrollView>
@@ -647,24 +644,23 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     color: 'red',
     backgroundColor: '#FBF9F1',
-    right: 10,
+    right: 20,
   },
   txtInpPal: {
-    backgroundColor: '#B5C0D0',
+    backgroundColor: '#103f7d',
     flex: 1,
     borderColor: 'gray',
     borderWidth: 1,
     marginVertical: 2,
   },
   txtInpSKU: {
-    backgroundColor: 'lightgrey',
-    // flex: 1,
+    backgroundColor: '#103f7d',
     borderColor: 'gray',
     borderWidth: 1,
     width: 183,
   },
   txtInpQTY: {
-    backgroundColor: 'lightgrey',
+    backgroundColor: '#103f7d',
     // flex: 1,
     marginLeft: 5,
     borderColor: 'gray',

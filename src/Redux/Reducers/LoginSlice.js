@@ -5,19 +5,19 @@ initialState = {
   item: null,
 };
 
-const orderListSlice = createSlice({
-  name: 'orderList',
+const loginSlice = createSlice({
+  name: 'loginData',
   initialState,
 
   reducers: {
     setItem: (state, action) => {
       state.item = action.payload; // Simpan item ke state
     },
-    clearOrderList: state => {
+    clearLogin: state => {
       state.item = null; // Clear item
     },
   },
 });
 
-export const {setItem, clearOrderList } = orderListSlice.actions;
-export default orderListSlice.reducer;
+export const {setItem, clearLogin} = loginSlice.actions;
+export default loginSlice.reducer;

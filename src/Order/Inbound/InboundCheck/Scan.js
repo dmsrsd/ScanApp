@@ -7,13 +7,22 @@ import {
   StyleSheet,
   ScrollView,
 } from 'react-native';
-import {TextInput, Divider, Icon, MD3Colors, Button} from 'react-native-paper';
+import {
+  TextInput,
+  Divider,
+  Icon,
+  MD3Colors,
+  Button,
+  Portal,
+  Modal,
+} from 'react-native-paper';
+import {
+  Camera,
+  useCameraDevice,
+  useCodeScanner,
+} from 'react-native-vision-camera';
 
-const ScanScreen = ({route}) => {
-  
-  // PARAM FROM HOME
-  // const { title } = route.params;
-
+const ScanScreen = () => {
   const [poNumber, setPOnumber] = useState('12345');
   const [lotNumber, setLotNumber] = useState('56789');
 
@@ -39,13 +48,10 @@ const ScanScreen = ({route}) => {
     setLotNumber('');
   };
 
-  const openScanner = () => {
-    console.log('opened');
-  };
-
   // ADD NEW BAG NUMBER TEXTINPUT
-  const [bagNumber, setBagNum] = useState('202020');
-  const [bagWeight, setBagWeight] = useState('50');
+  const [bagNumber, setBagNum] = useState(['']);
+  const [bagWeight, setBagWeight] = useState('');
+
   const [subBagNumbers, setSubBagNumbers] = useState([]);
   const [subBagWeights, setSubBagWeights] = useState([]);
 
@@ -72,7 +78,7 @@ const ScanScreen = ({route}) => {
   };
   // END of ADD NEW TEXTINPUT
 
-  //   POST DATA INTO API
+  //POST DATA INTO API
   const postData = async () => {
     const data = {
       DataBagNumber: [
@@ -87,66 +93,121 @@ const ScanScreen = ({route}) => {
       ],
     };
 
-    console.log('data', data);
+    console.log('data postData', data);
   };
+
+  // SCANNER MODAL
+  const [ValScan, setValScan] = useState('tidak ada data');
+  // const [isCameraActive, setIsCameraActive] = useState(true);
+
+  const device = useCameraDevice('back');
+  if (!device) {
+    return <Text>Tidak Ada Kamera</Text>;
+  }
+
+  const codeScanner = useCodeScanner({
+    codeTypes: ['qr', 'ean-13', 'code-128'],
+    // codeTypes: ['ean-13', 'code-128'],
+    onCodeScanned: codes => {
+      console.log(`Scanned ${codes[0].value} codes!`);
+      setValScan(codes[0].value);
+      if (codes[0].value != '') {
+        // setIsCameraActive(false);
+        setBagNum(codes[0].value);
+        hideModal();
+      }
+    },
+  });
+
+  const [visible, setVisible] = useState(false);
+  const showModal = () => setVisible(true);
+  const hideModal = () => setVisible(false);
+  const containerStyle = {backgroundColor: 'white', padding: 80};
 
   return (
     <SafeAreaView>
       <ScrollView>
-        <View style={{flexDirection: 'row', alignItems: 'center'}}>
+        {/* <Divider /> */}
+
+        {/* PALLET and STOCK TYPE */}
+        <View style={{flexDirection: 'row', alignItems: 'center', top: 5}}>
+          
           <TextInput
             theme={theme}
             label={
               <Text style={{color: isFocused ? 'grey' : 'black'}}>
-                PO Number
+                PALLET NO
               </Text>
             }
-            value={poNumber}
-            onChangeText={text => setPOnumber(text)}
-            onFocus={handleFocus}
-            onBlur={handleBlur}
-            textColor="black"
-            style={styles.textInp}
-            editable={false}
-          />
-
-          {/* <View style={styles.clearText}>
-            <TouchableOpacity onPress={handleClear}>
-              <Icon source="close" color={MD3Colors.error50} size={20} />
-            </TouchableOpacity>
-          </View> */}
-        </View>
-
-        <Divider />
-
-        <View style={{flexDirection: 'row', alignItems: 'center'}}>
-          <TextInput
-            theme={theme}
-            label={
-              <Text style={{color: isFocused ? 'grey' : 'black'}}>
-                LOT Number
-              </Text>
-            }
-            value={lotNumber}
+            value="CG001"
             onChangeText={text => setLotNumber(text)}
             onFocus={handleFocus}
             onBlur={handleBlur}
             textColor="black"
-            style={styles.textInp}
-            editable={false}
+            style={styles.txtInpSKU}
+            editable={true}
           />
 
-          {/* <View style={styles.clearText}>
+          <TextInput
+            theme={theme}
+            label={
+              <Text style={{color: isFocused ? 'grey' : 'black'}}>
+                STOCK TYPE
+              </Text>
+            }
+            value="60"
+            onChangeText={text => setLotNumber(text)}
+            onFocus={handleFocus}
+            onBlur={handleBlur}
+            textColor="black"
+            style={styles.txtInpQTY}
+            editable={true}
+          />
+          <View style={styles.clrTxtQTY}>
+            <TouchableOpacity>
+              <Icon source="close" color={'transparent'} size={20} />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* SKU and QTY */}
+        <View style={{flexDirection: 'row', alignItems: 'center', top: 10}}>
+          <TextInput
+            theme={theme}
+            label={
+              <Text style={{color: isFocused ? 'grey' : 'black'}}>SKU</Text>
+            }
+            value="CG001"
+            onChangeText={text => setLotNumber(text)}
+            onFocus={handleFocus}
+            onBlur={handleBlur}
+            textColor="black"
+            style={styles.txtInpSKU}
+            editable={true}
+          />
+
+          <TextInput
+            theme={theme}
+            label={
+              <Text style={{color: isFocused ? 'grey' : 'black'}}>QTY</Text>
+            }
+            value="60"
+            onChangeText={text => setLotNumber(text)}
+            onFocus={handleFocus}
+            onBlur={handleBlur}
+            textColor="black"
+            style={styles.txtInpQTY}
+            editable={true}
+          />
+          <View style={styles.clrTxtQTY}>
             <TouchableOpacity onPress={handleClear}>
               <Icon source="close" color={MD3Colors.error50} size={20} />
             </TouchableOpacity>
-          </View> */}
+          </View>
         </View>
 
-        <Divider />
-
         {/* MAIN BAG NUMBER */}
-        <View style={{flexDirection: 'row', alignItems: 'center'}}>
+        <View style={{flexDirection: 'row', alignItems: 'center', top: 15}}>
           <TextInput
             theme={theme}
             label={
@@ -154,7 +215,7 @@ const ScanScreen = ({route}) => {
                 Bag Number
               </Text>
             }
-            value={bagNumber}
+            value={ValScan}
             onChangeText={text => setBagNum(text)}
             onFocus={handleFocus}
             onBlur={handleBlur}
@@ -162,35 +223,23 @@ const ScanScreen = ({route}) => {
             style={styles.textInpBag}
           />
 
-          <TouchableOpacity onPress={openScanner} style={styles.btnScan}>
+          <TouchableOpacity onPress={showModal} style={styles.btnScan}>
             <Icon source="barcode" color={MD3Colors.primary0} size={20} />
           </TouchableOpacity>
-
-          {/* <TextInput
-            theme={theme}
-            label={
-              <Text style={{color: isFocused ? 'grey' : 'black'}}>
-                Bag Weight
-              </Text>
-            }
-            value={bagWeight}
-            onChangeText={text => setBagWeight(text)}
-            onFocus={handleFocus}
-            onBlur={handleBlur}
-            textColor="black"
-            style={styles.textInpBagWeight}
-            keyboardType="numeric"
-          /> */}
 
           <TouchableOpacity onPress={newBagNum} style={styles.addScan}>
             <Icon source="plus" color={MD3Colors.primary100} size={20} />
           </TouchableOpacity>
         </View>
 
-        <Divider />
-
         {/* BAG Weight */}
-        <View style={{flexDirection: 'row', alignItems: 'center', left: 30}}>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            left: 30,
+            top: 15,
+          }}>
           <TextInput
             theme={theme}
             label={
@@ -229,15 +278,16 @@ const ScanScreen = ({route}) => {
                     Bag Number
                   </Text>
                 }
-                value={num}
+                value={ValScan + 1}
                 onChangeText={text => updateSubBagNum(index, text)}
                 onFocus={handleFocus}
                 onBlur={handleBlur}
                 textColor="black"
                 style={styles.textInpBag}
+                editable={false}
               />
 
-              <TouchableOpacity style={styles.btnScan} onPress={openScanner}>
+              <TouchableOpacity style={styles.btnScan} onPress={showModal}>
                 <Icon source="barcode" color={MD3Colors.primary0} size={20} />
               </TouchableOpacity>
 
@@ -308,6 +358,21 @@ const ScanScreen = ({route}) => {
 
         <Text>{'\n'}</Text>
         <Text>{'\n'}</Text>
+
+        <Portal>
+          <Modal visible={visible} contentContainerStyle={containerStyle}>
+            <View style={styles.cameraContainer}>
+              <Camera
+                device={device}
+                isActive={true}
+                style={styles.camera}
+                codeScanner={codeScanner}
+              />
+            </View>
+          </Modal>
+        </Portal>
+
+        {/* <Text style={styles.textScan}>{ValScan}</Text> */}
       </ScrollView>
     </SafeAreaView>
   );
@@ -365,5 +430,34 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'red',
     height: 70,
+  },
+
+  //BETWEEN TEXTINPUT
+  txtInpSKU: {
+    backgroundColor: '#FBF9F1',
+    flex: 1,
+  },
+  txtInpQTY: {
+    backgroundColor: '#FBF9F1',
+    flex: 1,
+    marginLeft: 5,
+  },
+  clrTxtQTY: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FBF9F1',
+    height: 60,
+  },
+
+  // SCANNER
+  camera: {
+    width: 400,
+    height: 400,
+    borderColor: 'black',
+    borderWidth: 1,
+  },
+  textScan: {
+    color: 'red',
+    fontSize: 20,
   },
 });

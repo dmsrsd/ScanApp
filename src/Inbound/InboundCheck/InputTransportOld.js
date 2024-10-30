@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useCallback} from 'react';
+import React, {useState, useEffect, useRef} from 'react';
 import {
   View,
   Text,
@@ -8,21 +8,24 @@ import {
   StyleSheet,
   TouchableOpacity,
   TextInput,
-  Button,
   ActivityIndicator,
   RefreshControl,
+  Animated,
+  TouchableWithoutFeedback,
 } from 'react-native';
-import {Icon, MD3Colors} from 'react-native-paper';
+import {Icon, MD3Colors, Button} from 'react-native-paper';
 import {Dropdown} from 'react-native-element-dropdown';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import {format} from 'date-fns';
 import {useForm, Controller} from 'react-hook-form';
-import {baseURL} from '../../../utils/url';
-
-import {setItemVehicle} from '../../../Redux/Reducers/VehicleDataSlice';
 import {useDispatch, useSelector} from 'react-redux';
 
-const Transportation = () => {
+import {baseURL} from '../../utils/url';
+import useDisableBackButton from '../../utils/useDisableBackButton';
+import {setItemVehicle} from '../../Redux/Reducers/VehicleDataSlice';
+
+const InputTransport = ({navigation}) => {
+  useDisableBackButton('Anda tidak dapat kembali dari halaman ini.');
   const dispatch = useDispatch();
 
   const [vehicleNo, setVehicleNo] = useState('');
@@ -262,29 +265,44 @@ const Transportation = () => {
   };
 
   const dateFields = [
-    {label: 'Arrival Datetime', state: arrivalDate, type: 'arrival'},
+    {
+      label: 'Arrival Datetime',
+      state: arrivalDate,
+      type: 'arrival',
+      isEditable: true, // Selalu editable
+    },
     {
       label: 'Start Unloading Datetime',
       state: startUnloadingDate,
       type: 'startUnloading',
+      isEditable: true, // Selalu editable
     },
     {
       label: 'Finish Unloading Datetime',
       state: finishUnloadingDate,
       type: 'finishUnloading',
+      isEditable: zeroOutStanding === 'true',
     },
-    {label: 'Departure Datetime', state: departureDate, type: 'departure'},
+    {
+      label: 'Departure Datetime',
+      state: departureDate,
+      type: 'departure',
+      isEditable: zeroOutStanding === 'true',
+    },
   ];
 
-  const DatePickerField = ({label, value, onShow}) => (
+  const DatePickerField = ({label, value, onShow, isEditable}) => (
     <View style={{top: 20}}>
       <Text style={{color: 'grey', fontWeight: 'bold'}}>{label}:</Text>
       <View style={{flexDirection: 'row', alignItems: 'center'}}>
         <TextInput value={value} style={styles.dateInput} editable={false} />
-        <TouchableOpacity onPress={onShow} style={styles.iconCalender}>
+        <TouchableOpacity
+          onPress={isEditable ? onShow : null}
+          style={styles.iconCalender}
+          disabled={!isEditable}>
           <Icon
             source="calendar"
-            color={MD3Colors.secondary0}
+            color={isEditable ? MD3Colors.secondary0 : 'lightgrey'} // Ganti warna jika tidak editable
             size={20}
             style={{alignSelf: 'center'}}
           />
@@ -292,6 +310,7 @@ const Transportation = () => {
       </View>
     </View>
   );
+
   //END OF DATEPICKER
 
   // INPUT SECTION
@@ -362,16 +381,43 @@ const Transportation = () => {
         throw new Error(`Error: ${result}`);
       }
       Alert.alert('Success', 'Vehicle transportation finished successfully!');
+      navigation.navigate('OrderList');
     } catch (error) {
       console.error('Error:', error);
       Alert.alert('Error', error.message);
     }
   };
 
-  const allFieldsFilled =
-    arrivalDate && startUnloadingDate && finishUnloadingDate && departureDate;
+  const rotateAnim = useRef(new Animated.Value(0)).current;
+  const scrollY = useRef(new Animated.Value(0)).current;
 
-  const arrivalAndStartFilled = arrivalDate && startUnloadingDate;
+  const resetAnimations = () => {
+    rotateAnim.setValue(0); // Reset nilai rotasi
+    scrollY.setValue(0); // Reset warna
+  };
+
+  const GoToScan = () => {
+    resetAnimations();
+    rotateAnim.stopAnimation();
+
+    if (arrivalDate === '' && startUnloadingDate === '') {
+      Alert.alert('Mohon Isi Arrival Date dan Start Unloading dahulu');
+    } else {
+      navigation.navigate('ScanItem', {param: zeroOutStanding});
+    }
+  };
+
+  // Menghitung rotasi
+  const rotateInterpolate = scrollY.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+
+  // Menghitung warna berdasarkan scroll
+  const backgroundColorInterpolate = scrollY.interpolate({
+    inputRange: [0, 200], // Ganti sesuai dengan tinggi scroll yang diinginkan
+    outputRange: ['grey', 'purple'],
+  });
 
   return (
     <SafeAreaView>
@@ -383,7 +429,12 @@ const Transportation = () => {
         <ScrollView
           refreshControl={
             <RefreshControl refreshing={loadingDataWH} onRefresh={onRefresh} />
-          }>
+          }
+          onScroll={Animated.event(
+            [{nativeEvent: {contentOffset: {y: scrollY}}}],
+            {useNativeDriver: false},
+          )}
+          scrollEventThrottle={16}>
           <View style={{padding: 20}}>
             <View>
               <Text
@@ -449,6 +500,8 @@ const Transportation = () => {
               />
             ))}
 
+            <Text>{'\n'}</Text>
+
             <View>
               <Text
                 style={{
@@ -462,14 +515,41 @@ const Transportation = () => {
               </Text>
             </View>
 
-            {dateFields.map(({label, state, type}) => (
+            {dateFields.map(({label, state, type, isEditable}) => (
               <DatePickerField
                 key={type}
                 label={label}
                 value={state}
                 onShow={() => showDatePicker(type)}
+                isEditable={isEditable}
               />
             ))}
+
+            <Text>{'\n'}</Text>
+
+            {zeroOutStanding == 'true' ? (
+              <>
+                <Button
+                  style={{backgroundColor: '#103f7d'}}
+                  textColor="white"
+                  mode="contained"
+                  onPress={() => saveFinishTransportation()}>
+                  Finish
+                </Button>
+              </>
+            ) : (
+              <Button
+                style={{backgroundColor: '#103f7d'}}
+                textColor="white"
+                mode="contained"
+                onPress={handleSubmit(savePartialVehicleData)}>
+                Save Vehicle
+              </Button>
+            )}
+
+            <Text>{'\n'}</Text>
+
+            <Text>{'\n'}</Text>
 
             <DateTimePickerModal
               isVisible={isDatePickerVisible}
@@ -477,32 +557,38 @@ const Transportation = () => {
               onConfirm={selectDate}
               onCancel={hideDatePicker}
             />
-
-            <Text>{'\n'}</Text>
-
-            {zeroOutStanding == 'false' ? (
-              <Button
-                title="Save Vehicle"
-                onPress={handleSubmit(savePartialVehicleData)}
-              />
-            ) : (
-              <Button
-                title="Finish"
-                onPress={() => saveFinishTransportation()}
-                color="green"
-              />
-            )}
           </View>
-
-          <Text>{'\n'}</Text>
-          <Text>{'\n'}</Text>
         </ScrollView>
       )}
+
+      <View
+        style={{
+          flex: 1,
+          justifyContent: 'flex-end',
+          alignItems: 'flex-end',
+          bottom: 16,
+          right: 16,
+        }}>
+        <TouchableWithoutFeedback onPress={GoToScan}>
+          <Animated.View
+            style={{
+              backgroundColor: backgroundColorInterpolate,
+              width: 50,
+              height: 50,
+              borderRadius: 50,
+              justifyContent: 'center',
+              alignItems: 'center',
+              transform: [{rotate: rotateInterpolate}],
+            }}>
+            <Icon source="barcode" color="white" size={30} />
+          </Animated.View>
+        </TouchableWithoutFeedback>
+      </View>
     </SafeAreaView>
   );
 };
 
-export default Transportation;
+export default InputTransport;
 
 const styles = StyleSheet.create({
   dropdown: {

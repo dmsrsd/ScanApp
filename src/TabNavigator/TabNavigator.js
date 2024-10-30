@@ -25,6 +25,7 @@ function ProfileScreen() {
 const Tab = createMaterialBottomTabNavigator();
 
 const TabNavigator = () => {
+  
   LogBox.ignoreLogs([
     'A props object containing a "key" prop is being spread into JSX',
   ]);

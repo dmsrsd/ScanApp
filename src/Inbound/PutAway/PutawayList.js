@@ -8,37 +8,40 @@ import {
   RefreshControl,
 } from 'react-native';
 import React, {useEffect, useState} from 'react';
-import {PieChart} from 'react-native-gifted-charts';
-import {Divider, Text, Icon, MD3Colors, Avatar, Card} from 'react-native-paper';
-
+import {Divider, Text, Avatar, Card} from 'react-native-paper';
 import {useDispatch, useSelector} from 'react-redux';
-import {setItem} from '../../../Redux/Reducers/PutAwaySlice';
 
-import {baseURL} from '../../../utils/url';
+import {setItem} from '../../Redux/Reducers/PutAwaySlice';
+import {baseURL} from '../../utils/url';
+import useDisableBackButton from '../../utils/useDisableBackButton';
 
 const screenWidth = Dimensions.get('window').width;
 
-const PutAway = ({navigation}) => {
+const PutawayList = ({navigation}) => {
+
+  useEffect(() => {
+    getOrderList();
+  }, []);
+
+  
+  useDisableBackButton('Anda tidak dapat kembali dari halaman ini.');
+
   const dispatch = useDispatch();
 
   const loginData = useSelector(state => state.loginData.item);
-
 
   const handlePress = item => {
     console.log('Item', item);
 
     dispatch(setItem(item));
 
-    navigation.navigate('Scan PutAway');
+    navigation.navigate('ScanPutaway');
   };
 
   const [orderListData, setOrderList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    getOrderList();
-  }, []);
 
   const getOrderList = async () => {
     setLoading(true);
@@ -47,6 +50,9 @@ const PutAway = ({navigation}) => {
     try {
       const response = await fetch(api);
       const responseData = await response.json();
+
+      console.log('res', responseData);
+
       setOrderList(responseData);
     } catch (error) {
       console.error(error);
@@ -64,32 +70,33 @@ const PutAway = ({navigation}) => {
 
   return (
     <View style={styles.container}>
-      <Divider />
-
       <View style={styles.orderListSection}>
-        <Text>{'\n'}</Text>
-
-        <View>
-          {loading ? (
+        {loading ? (
+          <View style={styles.actIndicator}>
             <ActivityIndicator size="large" color="#0000ff" />
-          ) : (
+          </View>
+        ) : (
+          <>
+            <View style={styles.titleOrder}>
+              <Text style={styles.txtTitle}>Putaway Planning</Text>
+            </View>
+
             <FlatList
-              data={orderListData}
-              renderItem={({item, index}) => (
+              data={orderListData.filter(item => item.is_scanned !== 'Y')}
+              renderItem={({item}) => (
                 <TouchableOpacity onPress={() => handlePress(item)}>
                   <Card style={{backgroundColor: 'lightgrey', margin: 10}}>
                     <Card.Title
-                      title={`GR-ID: ${item.gr_id}`}
+                      title={`${item.gr_id}`}
                       titleStyle={{
                         color: 'black',
                         fontWeight: 'bold',
-                        fontSize: 12,
                       }}
-                      subtitle={`MOV-ID: ${item.movement_id}`}
+                      subtitle={`Location To: ${item.location_to}`}
                       subtitleStyle={{
                         color: 'black',
                         fontWeight: 'bold',
-                        fontSize: 11,
+                        fontSize: 15,
                       }}
                       left={() => (
                         <Avatar.Icon
@@ -98,24 +105,8 @@ const PutAway = ({navigation}) => {
                           style={{backgroundColor: 'green'}}
                         />
                       )}
-                      // right={() => (
-                      //   <Text style={{color: 'grey', fontSize: 11, margin: 10}}>
-                      //     {item.datetime_created}
-                      //   </Text>
-                      // )}
                     />
                     <Card.Content>
-                      {/* <Text
-                        variant="bodyMedium"
-                        style={{
-                          color: 'grey',
-                          left: 55,
-                          fontSize: 13,
-                          fontWeight: 'bold',
-                        }}>
-                        {`${item.warehouseman}`}
-                      </Text>
-
                       <Text
                         variant="bodyMedium"
                         style={{
@@ -124,29 +115,7 @@ const PutAway = ({navigation}) => {
                           fontSize: 12,
                           fontWeight: 'bold',
                         }}>
-                        {`Location To: ${item.location_to}`}
-                      </Text> */}
-
-                      <Text
-                        variant="bodyMedium"
-                        style={{
-                          color: 'grey',
-                          left: 55,
-                          fontSize: 12,
-                          fontWeight: 'bold',
-                        }}>
-                        {`SKU: ${item.sku}`}
-                      </Text>
-
-                      <Text
-                        variant="bodyMedium"
-                        style={{
-                          color: 'grey',
-                          left: 55,
-                          fontSize: 12,
-                          fontWeight: 'bold',
-                        }}>
-                        {`Quantity: ${item.qty}`}
+                        {`Scan Status: ${item.is_scanned}`}
                       </Text>
                     </Card.Content>
                   </Card>
@@ -158,52 +127,27 @@ const PutAway = ({navigation}) => {
                 <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
               }
             />
-          )}
-          <Text>{'\n'}</Text>
-        </View>
+          </>
+        )}
+        <Text>{'\n'}</Text>
       </View>
     </View>
   );
 };
 
-export default PutAway;
+export default PutawayList;
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'whitesmoke',
+    backgroundColor: 'white',
   },
-  titleChart: {
-    justifyContent: 'flex-start',
-    paddingHorizontal: 20,
-    bottom: 10,
-  },
-  txtTitle: {
-    color: 'black',
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-
-  // CHART ADJUSTMENT
-  chartSection: {
-    marginTop: 20,
-    marginBottom: 10,
-    width: screenWidth,
-  },
-  chartWarp: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    top: 10,
-    padding: 10,
-    marginBottom: 10,
-  },
-  txtChart: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 10,
-    fontWeight: 'bold',
+  actIndicator: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 
   // ORDER LIST SECTION
@@ -212,14 +156,13 @@ const styles = StyleSheet.create({
     width: screenWidth,
   },
   titleOrder: {
-    justifyContent: 'flex-start',
     paddingHorizontal: 10,
     margin: 10,
+    alignItems: 'center',
   },
-
-  // SEPARATOR
-  separator: {
-    height: 1,
-    backgroundColor: 'black',
+  txtTitle: {
+    color: 'black',
+    fontSize: 17,
+    fontWeight: 'bold',
   },
 });

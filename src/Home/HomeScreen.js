@@ -5,27 +5,29 @@ import {
   FlatList,
   ActivityIndicator,
   TouchableOpacity,
+  RefreshControl,
 } from 'react-native';
 import React, {useEffect, useState} from 'react';
 import {PieChart} from 'react-native-gifted-charts';
 import {Divider, Text, Icon, MD3Colors, Avatar, Card} from 'react-native-paper';
 
-import {useDispatch} from 'react-redux';
+import {useDispatch, useSelector} from 'react-redux';
 import {setItem} from '../Redux/Reducers/OrderListSlice';
+
+import {baseURL} from '../utils/url';
 
 const screenWidth = Dimensions.get('window').width;
 
 const HomeScreen = ({navigation}) => {
   const dispatch = useDispatch();
 
+  const loginData = useSelector(state => state.loginData.item);
+
   const handlePress = item => {
     dispatch(setItem(item));
 
-    navigation.navigate('Order', {
-      screen: 'Inbound',
-      params: {
-        screen: 'Transport',
-      },
+    navigation.navigate('InboundOrder', {
+      screen: 'InboundScreen',
     });
   };
 
@@ -39,20 +41,55 @@ const HomeScreen = ({navigation}) => {
     {value: 70, color: 'darkgrey'},
   ];
 
-  const [data, setData] = useState([]);
+  const [orderListData, setOrderList] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    fetch('https://jsonplaceholder.typicode.com/posts')
-      .then(response => response.json())
-      .then(data => {
-        setData(data);
-        setLoading(false);
-      })
-      .catch(error => {
-        console.error(error);
-      });
+    getOrderList();
+    getPutawayList();
   }, []);
+
+  const getOrderList = async () => {
+    setLoading(true);
+    const api = `${baseURL}/order-list/${loginData}`;
+
+    try {
+      const response = await fetch(api);
+      const responseData = await response.json();
+      setOrderList(responseData.data);
+    } catch (error) {
+      console.error(error);
+      Alert.alert('Error', 'Failed to fetch order list.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    getOrderList();
+  };
+
+  const [putawayList, setPutawayList] = useState([]);
+
+  const getPutawayList = async () => {
+    setLoading(true);
+    const api = `${baseURL}/order-putaway/${loginData}`;
+
+    try {
+      const response = await fetch(api);
+      const responseData = await response.json();
+      setPutawayList(responseData);
+    } catch (error) {
+      console.error(error);
+      Alert.alert('Error', 'Failed to fetch Putaway list.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -107,17 +144,17 @@ const HomeScreen = ({navigation}) => {
           <Text style={styles.txtTitle}>Order List</Text>
         </View>
 
-        {/* <View>
+        <View>
           {loading ? (
             <ActivityIndicator size="large" color="#0000ff" />
           ) : (
             <FlatList
-              data={data}
+              data={orderListData}
               renderItem={({item}) => (
                 <TouchableOpacity onPress={() => handlePress(item)}>
                   <Card style={{backgroundColor: 'lightgrey', margin: 10}}>
                     <Card.Title
-                      title="IB1234567890"
+                      title={item.inbound_planning_no}
                       titleStyle={{color: 'black', fontWeight: 'bold'}}
                       subtitle="Processed of Gudang B"
                       subtitleStyle={{color: 'grey'}}
@@ -130,7 +167,7 @@ const HomeScreen = ({navigation}) => {
                       )}
                       right={() => (
                         <Text style={{color: 'grey', fontSize: 12, margin: 10}}>
-                          2 Hrs
+                          {item.datetime_created}
                         </Text>
                       )}
                     />
@@ -142,11 +179,15 @@ const HomeScreen = ({navigation}) => {
                   </Card>
                 </TouchableOpacity>
               )}
-              keyExtractor={item => item.id.toString()}
+              keyExtractor={item => item.inbound_planning_no.toString()}
+              ListFooterComponent={<View style={{height: 55}} />}
+              refreshControl={
+                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+              }
             />
           )}
           <Text>{'\n'}</Text>
-        </View> */}
+        </View>
       </View>
     </View>
   );
@@ -159,7 +200,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#DCDCDC',
+    backgroundColor: 'white',
   },
   titleChart: {
     justifyContent: 'flex-start',
@@ -169,6 +210,7 @@ const styles = StyleSheet.create({
   txtTitle: {
     color: 'black',
     fontSize: 20,
+    fontWeight: 'bold',
   },
 
   // CHART ADJUSTMENT
@@ -208,3 +250,5 @@ const styles = StyleSheet.create({
     backgroundColor: 'black',
   },
 });
+
+

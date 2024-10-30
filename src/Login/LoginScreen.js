@@ -1,88 +1,90 @@
 import React, {useState} from 'react';
-import {NavigationActions} from '@react-navigation/native';
 import {
   StyleSheet,
   Text,
   View,
-  TextInput,
   TouchableOpacity,
   Image,
   Alert,
+  Dimensions,
+  PermissionsAndroid,
+  KeyboardAvoidingView,
 } from 'react-native';
+import {setItem} from '../Redux/Reducers/LoginSlice';
+import {useDispatch} from 'react-redux';
+import FormLogin from '../Components/Form/FormLogin';
+import LottieView from 'lottie-react-native';
+
+const {width, height} = Dimensions.get('window');
 
 export default LoginScreen = ({navigation}) => {
+  const dispatch = useDispatch();
+
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState(null);
+  const [isFocused, setIsFocused] = useState(false);
+  const [secureTextEntry, setSecureTextEntry] = useState(true);
 
-  const handleLogin = () => {
-    if (username === 'admin' && password === '12345') {
-      console.log('Login successful!');
-      // navigation.navigate('TabNavigator', {screen: 'Home'});
-      navigation.navigate('CombineNavigator', {screen: 'Home'});
+  const handleLogin = async () => {
+    if (username !== '' && password !== '') {
+      dispatch(setItem(username));
 
+      const granted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.CAMERA,
+      );
+
+      if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+        navigation.navigate('CombineNavigatorNew', {screen: 'Home'});
+      } else {
+        Alert.alert(
+          'Permission Denied',
+          'Camera permission is required to use this feature.',
+        );
+      }
     } else {
       setError('Invalid username or password');
     }
   };
 
-  showAlert = viewId => Alert.alert('Alert', 'Button pressed ' + viewId);
+  const handleFocus = () => setIsFocused(true);
+  const handleBlur = () => setIsFocused(false);
+  const toggleSecureTextEntry = () => setSecureTextEntry(!secureTextEntry);
 
   return (
-    <View style={styles.container}>
-      <View style={styles.inputContainer}>
-        <Image
-          style={styles.inputIcon}
-          source={{
-            uri: 'https://img.icons8.com/ios-filled/512/circled-envelope.png',
-          }}
-        />
+    <KeyboardAvoidingView style={styles.container}>
+      <LottieView
+        style={styles.lottieBackground}
+        source={require('../Assets/lottie/wallpaper.json')}
+        autoPlay
+        loop
+      />
 
-        <TextInput
-          style={styles.inputs}
-          placeholder="Email"
-          keyboardType="email-address"
-          underlineColorAndroid="transparent"
-          placeholderTextColor="#666"
-          value={username}
-          onChangeText={text => setUsername(text)}
+      <View style={styles.containerImg}>
+        <Image
+          style={styles.img}
+          source={require('../Assets/img/logo-nti.png')}
         />
       </View>
 
-      <View style={styles.inputContainer}>
-        <Image
-          style={styles.inputIcon}
-          source={{uri: 'https://img.icons8.com/ios-glyphs/512/key.png'}}
-        />
-        <TextInput
-          style={styles.inputs}
-          placeholder="Password"
-          secureTextEntry={true}
-          underlineColorAndroid="transparent"
-          placeholderTextColor="#666"
-          value={password}
-          onChangeText={text => setPassword(text)}
-        />
-      </View>
+      <FormLogin
+        username={username}
+        setUsername={setUsername}
+        password={password}
+        setPassword={setPassword}
+        secureTextEntry={secureTextEntry}
+        toggleSecureTextEntry={toggleSecureTextEntry}
+        isFocused={isFocused}
+        handleFocus={handleFocus}
+        handleBlur={handleBlur}
+      />
 
       <TouchableOpacity
         style={[styles.buttonContainer, styles.loginButton]}
-        onPress={() => handleLogin()}>
+        onPress={handleLogin}>
         <Text style={styles.loginText}>Login</Text>
       </TouchableOpacity>
-      {/* 
-      <TouchableOpacity
-        style={styles.buttonContainer}
-        onPress={() => showAlert('forgot password')}>
-        <Text>Forgot your password?</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={styles.buttonContainer}
-        onPress={(onPress = {handleLogin})}>
-        <Text>Sign up</Text>
-      </TouchableOpacity> */}
-    </View>
+    </KeyboardAvoidingView>
   );
 };
 
@@ -91,45 +93,37 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#DCDCDC',
-  },
-  inputContainer: {
-    borderBottomColor: '#F5FCFF',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 30,
-    borderBottomWidth: 1,
-    width: 250,
-    height: 45,
-    marginBottom: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  inputs: {
-    height: 45,
-    marginLeft: 16,
-    borderBottomColor: '#FFFFFF',
-    flex: 1,
-    color: '#000',
-  },
-  inputIcon: {
-    width: 30,
-    height: 30,
-    marginLeft: 15,
-    justifyContent: 'center',
+    backgroundColor: 'transparent',
   },
   buttonContainer: {
     height: 45,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
-    width: 250,
-    borderRadius: 30,
+    marginBottom: 70,
+    width: '90%',
+    borderRadius: 10,
+    bottom: 140,
   },
   loginButton: {
-    backgroundColor: '#00b5ec',
+    backgroundColor: '#0c4ca3',
   },
   loginText: {
     color: 'white',
+    fontWeight: 'bold',
+  },
+  containerImg: {
+    paddingBottom: 20,
+  },
+  img: {
+    width: Dimensions.get('window').width * 0.5,
+    height: Dimensions.get('window').height * 0.5,
+    resizeMode: 'contain',
+  },
+  lottieBackground: {
+    position: 'absolute',
+    width: Dimensions.get('window').width * 1.1,
+    height: Dimensions.get('window').height * 1,
+    transform: [{rotate: '180deg'}],
   },
 });
