@@ -41,7 +41,7 @@ const ScanPutaway = ({navigation}) => {
   ];
 
   useEffect(() => {
-    console.log('putAwayList', putAwayList);
+    console.log('Ok');
   }, []);
 
   const [cameraVisible, setCameraVisible] = useState(false);
@@ -316,7 +316,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   button: {
-    backgroundColor: '#103f7d',
+    backgroundColor: '#059212',
     padding: 10,
     alignItems: 'center',
     marginTop: 20,

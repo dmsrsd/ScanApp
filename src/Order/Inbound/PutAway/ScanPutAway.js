@@ -38,7 +38,7 @@ const ScanPutAway = () => {
   ];
 
   useEffect(() => {
-    console.log('putAwayList', putAwayList);
+    console.log('Ok');
   }, []);
 
   const [cameraVisible, setCameraVisible] = useState(false);

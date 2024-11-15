@@ -25,24 +25,28 @@ import useDisableBackButton from '../../utils/useDisableBackButton';
 
 export default function ScanItem({route, navigation}) {
   useDisableBackButton('Anda tidak dapat kembali dari halaman ini.');
+  
   const param = route.params;
+  const checkQtyScanValidity = param.param
   const dispatch = useDispatch();
 
   // REDUX DATA
   const itemVehicle = useSelector(state => state.vehicleData.itemVehicle);
   const itemOrderList = useSelector(state => state.orderList.item);
+  const loginData = useSelector(state => state.loginData.item);
+
 
   // Destructuring itemVehicle
   const {vehicle_no, activity_id, transport_id} = itemVehicle || {};
   const {inbound_planning_no, checker} = itemOrderList || {};
 
   useEffect(() => {
-    console.log('param', param);
 
     if (!itemVehicle) {
       setLoadingSKU(false);
     } else {
       fetchSKUs();
+      // checkQtyScan();
     }
   }, [itemVehicle, itemOrderList]);
 
@@ -222,6 +226,8 @@ export default function ScanItem({route, navigation}) {
       const response = await fetch(api);
       const data = await response.json();
 
+      console.log('Res SKU', data);
+
       setLoadingSKU(false);
 
       // Memetakan SKU dan mengecek outstanding untuk setiap SKU
@@ -259,45 +265,56 @@ export default function ScanItem({route, navigation}) {
     }
   };
 
+  // PRE-SCAN PROCESS
   const prepareDataForPost = () => {
     const errorMessages = [];
 
     const data = inputSKUPallets.map(input => {
-      const totalQtyScan = input.bags.reduce((sum, bag) => {
-        const qtyScan = parseInt(bag.palletQty) || 0;
-        return sum + qtyScan;
-      }, 0);
+        const totalQtyScan = input.bags.reduce((sum, bag) => {
+            const qtyScan = parseInt(bag.palletQty) || 0; // Menggunakan 0 jika parseInt gagal
+            return sum + qtyScan;
+        }, 0);
 
-      // Validasi qty_scan terhadap qty_plan
-      if (totalQtyScan > input.qty) {
-        errorMessages.push(
-          `SKU ${input.sku}: Total qty_scan (${totalQtyScan}) tidak boleh melebihi qty_plan (${input.qty})`,
-        );
-      }
+        // Validasi qty_scan terhadap qty_plan
+        if (totalQtyScan > input.qty) {
+            errorMessages.push(
+                `SKU ${input.sku}: Total qty_scan (${totalQtyScan}) tidak boleh melebihi qty_plan (${input.qty})`
+            );
+        }
 
-      return {
-        sku: input.sku,
-        qty_plan: input.qty,
-        pallets: input.bags.map(bag => ({
-          pallet_id: bag.value,
-          qty_scan: bag.palletQty,
-        })),
-      };
+        // Memperbolehkan totalQtyScan 0, hanya memeriksa jika kurang dari 0 atau tidak valid
+        if (totalQtyScan < 0) {
+            errorMessages.push(`SKU ${input.sku}: Qty Scan tidak boleh kurang dari 0`);
+        }
+
+        // Memeriksa apakah qty_scan kosong
+        if (input.bags.some(bag => bag.palletQty === "")) {
+            errorMessages.push(`SKU ${input.sku}: Qty Scan tidak boleh kosong`);
+        }
+
+        return {
+            sku: input.sku,
+            qty_plan: input.qty,
+            pallets: input.bags.map(bag => ({
+                pallet_id: bag.value,
+                qty_scan: bag.palletQty,
+            })),
+        };
     });
 
     // Jika ada pesan kesalahan, tampilkan alert dan kembalikan null
     if (errorMessages.length > 0) {
-      Alert.alert('Error', errorMessages.join('\n'));
-      return null;
+        Alert.alert('Error', errorMessages.join('\n'));
+        return null;
     }
 
     return data;
-  };
+};
 
   // PROSES SCAN
   const saveScan = async () => {
     const dataToSend = prepareDataForPost();
-
+    
     const url = `${baseURL}/process-scan/${inbound_planning_no}/${activity_id}/${checker}`;
 
     // Check for mandatory fields
@@ -322,7 +339,7 @@ export default function ScanItem({route, navigation}) {
       activity_id: activity_id,
       transport_id: transport_id,
       stock_id: selectedstockType.value,
-      user_created: 'superadmin',
+      user_created: loginData,
       details: dataToSend,
     });
 
@@ -478,7 +495,7 @@ export default function ScanItem({route, navigation}) {
                         onFocus={handleFocus}
                         onBlur={handleBlur}
                         textColor="black"
-                        editable={param.param !== 'true'} 
+                        // editable={checkQtyScanValidity == false}
                       />
                     </View>
 
@@ -499,7 +516,7 @@ export default function ScanItem({route, navigation}) {
                         newInputs[skuIndex].bags[bagIndex].palletQty = text;
                         setInputsSKUPallets(newInputs);
                       }}
-                      editable={param.param !== 'true'}
+                      // editable={checkQtyScanValidity == false}
                     />
 
                     <View style={{flexDirection: 'row', alignItems: 'center'}}>
@@ -572,7 +589,7 @@ export default function ScanItem({route, navigation}) {
           <Text>{'\n'}</Text>
           <Text>{'\n'}</Text>
 
-          {param.param === 'false' ? (
+          {/* {checkQtyScanValidity == false ? ( */}
             <View
               style={{flexDirection: 'row', justifyContent: 'space-between'}}>
               <Button
@@ -593,11 +610,11 @@ export default function ScanItem({route, navigation}) {
                 Save
               </Button>
             </View>
-          ) : (
+          {/* ) : (
             <>
               <Text style={{color: 'black'}}>Sudah Di Scan Semua</Text>
             </>
-          )}
+          )} */}
 
           <Text>{'\n'}</Text>
         </ScrollView>

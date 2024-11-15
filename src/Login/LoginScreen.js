@@ -13,9 +13,6 @@ import {
 import {setItem} from '../Redux/Reducers/LoginSlice';
 import {useDispatch} from 'react-redux';
 import FormLogin from '../Components/Form/FormLogin';
-import LottieView from 'lottie-react-native';
-
-const {width, height} = Dimensions.get('window');
 
 export default LoginScreen = ({navigation}) => {
   const dispatch = useDispatch();
@@ -53,11 +50,9 @@ export default LoginScreen = ({navigation}) => {
 
   return (
     <KeyboardAvoidingView style={styles.container}>
-      <LottieView
+      <Image
+        source={require('../Assets/img/bg-5.jpg')}
         style={styles.lottieBackground}
-        source={require('../Assets/lottie/wallpaper.json')}
-        autoPlay
-        loop
       />
 
       <View style={styles.containerImg}>

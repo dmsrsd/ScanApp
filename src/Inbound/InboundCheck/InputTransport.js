@@ -30,9 +30,13 @@ import {baseURL} from '../../utils/url';
 import useDisableBackButton from '../../utils/useDisableBackButton';
 import {setItemVehicle} from '../../Redux/Reducers/VehicleDataSlice';
 
-const InputTransport = ({navigation}) => {
+const InputTransport = ({navigation, route}) => {
   useDisableBackButton('Anda tidak dapat kembali dari halaman ini.');
   const dispatch = useDispatch();
+
+  // const {checkQtyScanValidity} = route.params;
+  const {param} = route.params;
+  const checkQtyScanValidity = param;
 
   const [vehicleNo, setVehicleNo] = useState('');
   const [activityId, setActivityId] = useState('');
@@ -42,7 +46,7 @@ const InputTransport = ({navigation}) => {
   const loginData = useSelector(state => state.loginData.item);
 
   // Destructuring untuk mengambil inbound_planning_no dan properti lain
-  const {inbound_planning_no} = item || {};
+  const {inbound_planning_no, main_checker} = item || {};
 
   const [arrivalDate, setArrivalDate] = useState('');
   const [startUnloadingDate, setStartUnloadingDate] = useState('');
@@ -60,6 +64,9 @@ const InputTransport = ({navigation}) => {
   const [loadingDataWH, setLoadingDataWH] = useState(false);
   const [zeroOutStanding, setIsZeroOutStanding] = useState('');
 
+  const [selectedVehicleNo, setSelectedVehicleNo] = useState('');
+  const [vehicleSelected, setVehicleSelected] = useState(false);
+
   // REACT-HOOK-FORM
   const {control, handleSubmit, setValue, clearErrors} = useForm();
 
@@ -67,28 +74,66 @@ const InputTransport = ({navigation}) => {
     if (!item && !loginData) {
       resetForm();
     } else {
-      fetchDataFromWH();
+      // fetchDataFromWH();
+      getVehicleNo();
     }
   }, [item, loginData]);
 
   const onRefresh = () => {
-    fetchDataFromWH();
+    // fetchDataFromWH();
+    getVehicleNo();
   };
 
-  const fetchDataFromWH = async () => {
-    if (!inbound_planning_no) {
-      resetForm();
-      return;
-    }
+  const [vehicleNumbers, setVehicleNumbers] = useState([]);
 
-    setLoadingDataWH(true);
-    const api = `${baseURL}/get-wh-trans/${inbound_planning_no}`;
+  const getVehicleNo = async () => {
+    const api = `${baseURL}/get-vehicle-no/${inbound_planning_no}/${main_checker}`;
 
     try {
       const response = await fetch(api);
       const data = await response.json();
 
-      console.log('GET WH TRANS', data);
+      const formatData = data.map(item => ({
+        label: item.vehicle_no,
+        value: item.vehicle_no,
+      }));
+
+      const vehicleNumbers = [
+        ...formatData,
+        {label: 'Add New Vehicle', value: 'add_new_vehicle'},
+      ];
+
+      if (loginData == main_checker) {
+        setVehicleNumbers(vehicleNumbers);
+      } else {
+        setVehicleNumbers(formatData);
+      }
+    } catch (error) {
+      console.error('Fetch get data WH Error:', error);
+    }
+  };
+
+  const handleDropdownChange = item => {
+    setVehicleSelected(true);
+    setSelectedVehicleNo(item.value);
+    fetchDataFromWH(item.value);
+    if (item.value === 'add_new_vehicle') {
+      resetForm();
+    }
+  };
+
+  const fetchDataFromWH = async vehicleNo => {
+    if (!inbound_planning_no && vehicleNo) {
+      resetForm();
+      return;
+    }
+
+    // setLoadingDataWH(true);
+    const api = `${baseURL}/get-wh-trans/${inbound_planning_no}/${main_checker}/${vehicleNo}`;
+
+    try {
+      const response = await fetch(api);
+      const data = await response.json();
 
       // Check if data is an array and has at least one element
       if (Array.isArray(data) && data.length > 0) {
@@ -146,7 +191,7 @@ const InputTransport = ({navigation}) => {
     setValue('driverName', '');
     setValue('containerNo', '');
     setValue('sealNo', '');
-    setVehicleNoEditable(true); // Atur kembali editable jika perlu
+    setVehicleNoEditable(true);
     setArrivalDate('');
     setStartUnloadingDate('');
     setFinishUnloadingDate('');
@@ -176,18 +221,15 @@ const InputTransport = ({navigation}) => {
   const onDismissSnackBar = () => setErrorVisible(false);
 
   const hasErrors = () => {
-    console.log('typeVehicle', typeVehicle.value);
     return typeVehicle.value == undefined;
   };
 
   // INSERT PARTIAL TRANSPORTATION DATA
   const savePartialVehicleData = async data => {
     if (hasErrors()) {
-      console.log('Set Error True');
       setErrorVisible(true); // Set error visible jika ada kesalahan
     } else {
       // Lakukan aksi untuk menyimpan data
-      console.log('Data disimpan: ', typeVehicle);
       setErrorVisible(false);
     }
 
@@ -206,7 +248,7 @@ const InputTransport = ({navigation}) => {
       seal_no: data.sealNo,
       arrival_date: arrivalDate,
       start_unloading: startUnloadingDate,
-      user_created: 'superadmin',
+      user_created: loginData,
       is_active: 'Y',
       is_deleted: 'N',
     };
@@ -229,8 +271,6 @@ const InputTransport = ({navigation}) => {
     } else {
       // Mengubah body menjadi string setelah validasi
       const bodyString = JSON.stringify(body);
-      console.log('bodyString', bodyString);
-
       const api = `${baseURL}/save-partial-vehicle/${inbound_planning_no}/${loginData}`;
 
       try {
@@ -241,8 +281,6 @@ const InputTransport = ({navigation}) => {
         });
 
         const responseData = await response.json();
-
-        console.log('Res Save Partial', responseData);
 
         if (!response.ok) {
           // Mengambil detail kesalahan dari responseData
@@ -257,7 +295,10 @@ const InputTransport = ({navigation}) => {
           throw new Error(errorMessage.trim());
         } else {
           Alert.alert('Success', 'Vehicle data saved successfully!');
-          fetchDataFromWH();
+          navigation.navigate('InboundOrder', {
+            screen: 'OrderList',
+          });
+          resetForm();
         }
       } catch (error) {
         Alert.alert('Error', error.message);
@@ -314,13 +355,15 @@ const InputTransport = ({navigation}) => {
       label: 'Finish Unloading Datetime',
       state: finishUnloadingDate,
       type: 'finishUnloading',
-      isEditable: zeroOutStanding === 'true',
+      isEditable: checkQtyScanValidity == true,
+      // isEditable: true,
     },
     {
       label: 'Departure Datetime',
       state: departureDate,
       type: 'departure',
-      isEditable: zeroOutStanding === 'true',
+      isEditable: checkQtyScanValidity == true,
+      // isEditable: true,
     },
   ];
 
@@ -397,7 +440,7 @@ const InputTransport = ({navigation}) => {
     const body = JSON.stringify({
       finish_unloading: finishUnloadingDate, // Ganti dengan nilai yang sesuai
       departure_date: departureDate, // Ganti dengan nilai yang sesuai
-      user_updated: 'superadmin', // Ganti dengan user yang sesuai
+      user_updated: loginData, // Ganti dengan user yang sesuai
     });
 
     const requestOptions = {
@@ -414,7 +457,9 @@ const InputTransport = ({navigation}) => {
         throw new Error(`Error: ${result}`);
       }
       Alert.alert('Success', 'Vehicle transportation finished successfully!');
-      navigation.navigate('OrderList');
+      navigation.navigate('InboundNavigator', {
+        screen: 'OrderList',
+      });
     } catch (error) {
       console.error('Error:', error);
       Alert.alert('Error', error.message);
@@ -434,17 +479,11 @@ const InputTransport = ({navigation}) => {
     rotateAnim.stopAnimation();
 
     if (arrivalDate === '' && startUnloadingDate === '') {
-      Alert.alert('Mohon Isi Arrival Date dan Start Unloading dahulu');
+      Alert.alert('Mohon isi data atau pilih vehicle no, sebelum scan item.');
     } else {
-      navigation.navigate('ScanItem', {param: zeroOutStanding});
+      navigation.navigate('ScanItem', {param: checkQtyScanValidity});
     }
   };
-
-  // Menghitung rotasi
-  const rotateInterpolate = scrollY.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '360deg'],
-  });
 
   // Menghitung warna berdasarkan scroll
   const backgroundColorInterpolate = scrollY.interpolate({
@@ -460,7 +499,7 @@ const InputTransport = ({navigation}) => {
         </View>
       ) : (
         <>
-          <View style={{zIndex: 1}}>
+          {/* <View style={{zIndex: 1}}>
             <Snackbar
               style={{backgroundColor: '#F95454', top: 63}}
               visible={errorVisible}
@@ -470,7 +509,7 @@ const InputTransport = ({navigation}) => {
               }}>
               <Text style={{color: 'white'}}>Please Select Vehicle Type!</Text>
             </Snackbar>
-          </View>
+          </View> */}
 
           <ScrollView
             refreshControl={
@@ -499,7 +538,7 @@ const InputTransport = ({navigation}) => {
               </View>
 
               <Text style={{color: 'grey', fontWeight: 'bold'}}>
-                Inbound Planning No
+                Inbound Planning Number
               </Text>
               <TextInput
                 value={inbound_planning_no}
@@ -507,17 +546,11 @@ const InputTransport = ({navigation}) => {
                 editable={false}
               />
 
-              <View style={{paddingVertical: 5}}>
-                {/* {!typeVehicle && (
-                <Text style={{color: 'red'}}>Vehicle Type is required</Text>
-              )} */}
+              <View style={{paddingVertical: 1}}>
+                <Text style={{color: 'grey', fontWeight: 'bold', bottom: 1}}>
+                  Select Vehicle Number
+                </Text>
 
-                <HelperText
-                  style={{color: 'red'}}
-                  type="error"
-                  visible={errorVisible}>
-                  Please Select Vehicle Type!
-                </HelperText>
                 <Dropdown
                   style={[
                     styles.dropdown,
@@ -526,121 +559,332 @@ const InputTransport = ({navigation}) => {
                   placeholderStyle={styles.placeholderStyle}
                   selectedTextStyle={styles.selectedTextStyle}
                   inputSearchStyle={styles.inputSearchStyle}
-                  data={dataVehicle}
+                  data={vehicleNumbers}
                   search
                   maxHeight={300}
                   labelField="label"
                   valueField="value"
-                  placeholder="Vehicle Type"
+                  placeholder="Vehicle No"
                   searchPlaceholder="Search..."
-                  value={typeVehicle}
-                  onFocus={() => setIsFocusDropdown(true)}
-                  onBlur={() => setIsFocusDropdown(false)}
                   itemTextStyle={{color: 'black'}}
-                  onChange={item => {
-                    setTypeVehicle(item);
-                    setIsFocusDropdown(false);
-                    setErrorVisible(false);
-                  }}
+                  onChange={handleDropdownChange}
                 />
               </View>
 
-              {inputFields.map(field => (
-                <ControlledInput
-                  key={field.name}
-                  control={control}
-                  name={field.name}
-                  label={field.label}
-                  editable={
-                    field.name === 'vehicleNo' ? isVehicleNoEditable : true
-                  }
-                />
-              ))}
+              {/* { main_checker === loginData ? (
+                <View>
+                  <View style={{paddingVertical: 6}}>
+                    <Text>{'\n'}</Text>
 
-              <Text>{'\n'}</Text>
+                    <Text style={{color: 'grey', fontWeight: 'bold'}}>
+                      Vehicle type
+                    </Text>
 
-              <View>
-                <Text
-                  style={{
-                    color: 'black',
-                    fontSize: 20,
-                    fontWeight: 'bold',
-                    margin: 0,
-                    top: 10,
-                  }}>
-                  Vehicle Activity
-                </Text>
-              </View>
+                    <Dropdown
+                      style={[
+                        styles.dropdown,
+                        isFocusDropdown && {borderColor: 'green'},
+                      ]}
+                      placeholderStyle={styles.placeholderStyle}
+                      selectedTextStyle={styles.selectedTextStyle}
+                      inputSearchStyle={styles.inputSearchStyle}
+                      data={dataVehicle}
+                      search
+                      maxHeight={300}
+                      labelField="label"
+                      valueField="value"
+                      placeholder="Vehicle Type"
+                      searchPlaceholder="Search..."
+                      value={typeVehicle}
+                      onFocus={() => setIsFocusDropdown(true)}
+                      onBlur={() => setIsFocusDropdown(false)}
+                      itemTextStyle={{color: 'black'}}
+                      onChange={item => {
+                        setTypeVehicle(item);
+                        setIsFocusDropdown(false);
+                        setErrorVisible(false);
+                      }}
+                    />
+                  </View>
 
-              {dateFields.map(({label, state, type, isEditable}) => (
-                <DatePickerField
-                  key={type}
-                  label={label}
-                  value={state}
-                  onShow={() => showDatePicker(type)}
-                  isEditable={isEditable}
-                />
-              ))}
+                  {inputFields.map(field => (
+                    <ControlledInput
+                      key={field.name}
+                      control={control}
+                      name={field.name}
+                      label={field.label}
+                      editable={
+                        field.name === 'vehicleNo' ? isVehicleNoEditable : true
+                      }
+                    />
+                  ))}
 
-              <Text>{'\n'}</Text>
+                  <Text>{'\n'}</Text>
 
-              {zeroOutStanding == 'true' ? (
-                <>
-                  <Button
-                    style={{backgroundColor: '#103f7d'}}
-                    textColor="white"
-                    mode="contained"
-                    onPress={() => saveFinishTransportation()}>
-                    Finish
-                  </Button>
-                </>
+                  <View>
+                    <Text
+                      style={{
+                        color: 'black',
+                        fontSize: 20,
+                        fontWeight: 'bold',
+                        margin: 0,
+                        top: 10,
+                      }}>
+                      Vehicle Activity
+                    </Text>
+                  </View>
+
+                  {dateFields.map(({label, state, type, isEditable}) => (
+                    <DatePickerField
+                      key={type}
+                      label={label}
+                      value={state}
+                      onShow={() => showDatePicker(type)}
+                      isEditable={isEditable}
+                    />
+                  ))}
+
+                  <Text>{'\n'}</Text>
+                  <Text>{'\n'}</Text>
+
+                  {checkQtyScanValidity == true ? (
+                    <>
+                      <Button
+                        style={{backgroundColor: '#059212'}}
+                        textColor="white"
+                        mode="contained"
+                        onPress={() => saveFinishTransportation()}>
+                        Finish
+                      </Button>
+                    </>
+                  ) : (
+                    <Button
+                      style={{backgroundColor: '#059212'}}
+                      textColor="white"
+                      mode="contained"
+                      onPress={handleSubmit(savePartialVehicleData)}>
+                      Save Vehicle
+                    </Button>
+                  )}
+
+                  <Text>{'\n'}</Text>
+                  <Text>{'\n'}</Text>
+
+                  <DateTimePickerModal
+                    isVisible={isDatePickerVisible}
+                    mode="datetime"
+                    onConfirm={selectDate}
+                    onCancel={hideDatePicker}
+                  />
+                </View>
               ) : (
-                <Button
-                  style={{backgroundColor: '#103f7d'}}
-                  textColor="white"
-                  mode="contained"
-                  onPress={handleSubmit(savePartialVehicleData)}>
-                  Save Vehicle
-                </Button>
+                <View style={{paddingVertical: 1}}>
+                  <Text style={{color: 'grey', fontWeight: 'bold'}}>
+                    Vehicle Number
+                  </Text>
+                  <Dropdown
+                    style={[
+                      styles.dropdown,
+                      isFocusDropdown && {borderColor: 'green'},
+                    ]}
+                    placeholderStyle={styles.placeholderStyle}
+                    selectedTextStyle={styles.selectedTextStyle}
+                    inputSearchStyle={styles.inputSearchStyle}
+                    data={vehicleNumbers}
+                    search
+                    maxHeight={300}
+                    labelField="label"
+                    valueField="value"
+                    placeholder="Vehicle No"
+                    searchPlaceholder="Search..."
+                    itemTextStyle={{color: 'black'}}
+                    onChange={handleDropdownChange}
+                  />
+
+                  <Text>{'\n'}</Text>
+                  <Text>{'\n'}</Text>
+                </View>
+              )} */}
+
+              {main_checker === loginData ? (
+                vehicleSelected ? (
+                  <>
+                    <View style={{paddingVertical: 6}}>
+                      <HelperText
+                        style={{color: 'red'}}
+                        type="error"
+                        visible={errorVisible}>
+                        Please Select Vehicle Type!
+                      </HelperText>
+                      <Text style={{color: 'grey', fontWeight: 'bold'}}>
+                        Vehicle type
+                      </Text>
+
+                      <Dropdown
+                        style={[
+                          styles.dropdown,
+                          isFocusDropdown && {borderColor: 'green'},
+                        ]}
+                        placeholderStyle={styles.placeholderStyle}
+                        selectedTextStyle={styles.selectedTextStyle}
+                        inputSearchStyle={styles.inputSearchStyle}
+                        data={dataVehicle}
+                        search
+                        maxHeight={300}
+                        labelField="label"
+                        valueField="value"
+                        placeholder="Vehicle Type"
+                        searchPlaceholder="Search..."
+                        value={typeVehicle}
+                        onFocus={() => setIsFocusDropdown(true)}
+                        onBlur={() => setIsFocusDropdown(false)}
+                        itemTextStyle={{color: 'black'}}
+                        onChange={item => {
+                          setTypeVehicle(item);
+                          setIsFocusDropdown(false);
+                          setErrorVisible(false);
+                        }}
+                      />
+                    </View>
+
+                    {inputFields.map(field => (
+                      <ControlledInput
+                        key={field.name}
+                        control={control}
+                        name={field.name}
+                        label={field.label}
+                        editable={
+                          field.name === 'vehicleNo'
+                            ? isVehicleNoEditable
+                            : true
+                        }
+                      />
+                    ))}
+
+                    <Text>{'\n'}</Text>
+
+                    <View>
+                      <Text
+                        style={{
+                          color: 'black',
+                          fontSize: 20,
+                          fontWeight: 'bold',
+                          margin: 0,
+                          top: 10,
+                        }}>
+                        Vehicle Activity
+                      </Text>
+                    </View>
+
+                    {dateFields.map(({label, state, type, isEditable}) => (
+                      <DatePickerField
+                        key={type}
+                        label={label}
+                        value={state}
+                        onShow={() => showDatePicker(type)}
+                        isEditable={isEditable}
+                      />
+                    ))}
+
+                    <Text>{'\n'}</Text>
+                    <Text>{'\n'}</Text>
+
+                    {checkQtyScanValidity ? (
+                      <Button
+                        style={{backgroundColor: '#059212'}}
+                        textColor="white"
+                        mode="contained"
+                        onPress={() => saveFinishTransportation()}>
+                        Finish
+                      </Button>
+                    ) : (
+                      <Button
+                        style={{backgroundColor: '#059212'}}
+                        textColor="white"
+                        mode="contained"
+                        onPress={handleSubmit(savePartialVehicleData)}>
+                        Save Vehicle
+                      </Button>
+                    )}
+
+                    <Text>{'\n'}</Text>
+                    <Text>{'\n'}</Text>
+
+                    <DateTimePickerModal
+                      isVisible={isDatePickerVisible}
+                      mode="datetime"
+                      onConfirm={selectDate}
+                      onCancel={hideDatePicker}
+                    />
+                  </>
+                ) : (
+                  <></>
+                )
+              ) : (
+                <>
+                  <Text>{'\n'}</Text>
+                  <Text>{'\n'}</Text>
+                </>
+                // <View style={{paddingVertical: 1}}>
+                //   <Text style={{color: 'grey', fontWeight: 'bold'}}>
+                //     Vehicle Number
+                //   </Text>
+                //   <Dropdown
+                //     style={[
+                //       styles.dropdown,
+                //       isFocusDropdown && {borderColor: 'green'},
+                //     ]}
+                //     placeholderStyle={styles.placeholderStyle}
+                //     selectedTextStyle={styles.selectedTextStyle}
+                //     inputSearchStyle={styles.inputSearchStyle}
+                //     data={vehicleNumbers}
+                //     search
+                //     maxHeight={300}
+                //     labelField="label"
+                //     valueField="value"
+                //     placeholder="Vehicle No"
+                //     searchPlaceholder="Search..."
+                //     itemTextStyle={{color: 'black'}}
+                //     onChange={handleDropdownChange}
+                //   />
+
+                //   <Text>{'\n'}</Text>
+                //   <Text>{'\n'}</Text>
+                // </View>
               )}
-
-              <Text>{'\n'}</Text>
-              <Text>{'\n'}</Text>
-
-              <DateTimePickerModal
-                isVisible={isDatePickerVisible}
-                mode="datetime"
-                onConfirm={selectDate}
-                onCancel={hideDatePicker}
-              />
             </View>
           </ScrollView>
         </>
       )}
 
-      <View
-        style={{
-          flex: 1,
-          justifyContent: 'flex-end',
-          alignItems: 'flex-end',
-          bottom: 16,
-          right: 16,
-        }}>
-        <TouchableWithoutFeedback onPress={GoToScan}>
-          <Animated.View
+      {vehicleSelected ? (
+        <>
+          <View
             style={{
-              backgroundColor: backgroundColorInterpolate,
-              width: 50,
-              height: 50,
-              borderRadius: 50,
-              justifyContent: 'center',
-              alignItems: 'center',
-              transform: [{rotate: rotateInterpolate}],
+              flex: 1,
+              justifyContent: 'flex-end',
+              alignItems: 'flex-end',
+              bottom: 16,
+              right: 16,
             }}>
-            <Icon source="barcode" color="white" size={30} />
-          </Animated.View>
-        </TouchableWithoutFeedback>
-      </View>
+            <TouchableWithoutFeedback onPress={GoToScan}>
+              <Animated.View
+                style={{
+                  backgroundColor: backgroundColorInterpolate,
+                  width: 50,
+                  height: 50,
+                  borderRadius: 50,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                }}>
+                <Icon source="barcode" color="white" size={30} />
+              </Animated.View>
+            </TouchableWithoutFeedback>
+          </View>
+        </>
+      ) : (
+        <></>
+      )}
     </SafeAreaView>
   );
 };
@@ -690,6 +934,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     textAlign: 'center',
     backgroundColor: '#103f7d',
+    top: 1,
   },
   dateInput: {
     marginBottom: 10,

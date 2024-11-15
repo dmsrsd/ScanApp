@@ -20,6 +20,7 @@ import PutawayList from '../Inbound/PutAway/PutawayList';
 import ScanPutaway from '../Inbound/PutAway/ScanPutaway';
 
 import OutboundScreen from '../Outbound';
+import MultiInputTransport from '../Inbound/InboundCheck/MultiInputTransport';
 
 const BottomTab = createMaterialBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -37,7 +38,7 @@ function AppNavigator() {
       activeColor="#F5F5F5"
       inactiveColor="#787A91"
       barStyle={styles.barMenu}
-      theme={{colors: {secondaryContainer: '#0c4ca3'}}}>
+      theme={{colors: {secondaryContainer: '#103f7d'}}}>
       <BottomTab.Screen
         name="Home"
         component={HomeScreen}
@@ -63,21 +64,6 @@ function AppNavigator() {
           ),
         }}
       />
-
-      {/* <BottomTab.Screen
-        name="Outbound"
-        component={OutboundScreen}
-        options={{
-          tabBarLabel: <Text style={styles.nameTabColor}>Outbound</Text>,
-          tabBarIcon: ({color}) => (
-            <MaterialCommunityIcons
-              name="inbox-arrow-up"
-              color={color}
-              size={26}
-            />
-          ),
-        }}
-      /> */}
 
       <BottomTab.Screen
         name="Profile"
@@ -123,6 +109,16 @@ function OrderNavigator() {
           headerTitle: () => '',
         }}
       />
+
+      {/* <Stack.Screen
+        name="InputTransport"
+        component={MultiInputTransport}
+        options={{
+          headerShown: true,
+          headerBackTitleVisible: true,
+          headerTitle: () => '',
+        }}
+      /> */}
 
       <Stack.Screen
         name="ScanItem"
@@ -203,7 +199,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   barMenu: {
-    backgroundColor: '#0c4ca3',
+    backgroundColor: '#103f7d',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     overflow: 'hidden',

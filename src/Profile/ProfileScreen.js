@@ -3,8 +3,8 @@ import {View, Image, Dimensions, SafeAreaView} from 'react-native';
 import {PieChart} from 'react-native-gifted-charts';
 import {Button, Text, Icon, MD3Colors, IconButton} from 'react-native-paper';
 import {CommonActions} from '@react-navigation/native';
+import {useDispatch, useSelector} from 'react-redux';
 
-import {useDispatch} from 'react-redux';
 import {clearOrderList} from '../Redux/Reducers/OrderListSlice';
 import {clearItemVehicle} from '../Redux/Reducers/VehicleDataSlice';
 import {clearPutaway} from '../Redux/Reducers/PutAwaySlice';
@@ -14,6 +14,8 @@ const screenWidth = Dimensions.get('window').width;
 
 const ProfileScreen = ({navigation}) => {
   const dispatch = useDispatch();
+  const loginData = useSelector(state => state.loginData.item);
+
 
   const pieData1 = [
     {value: 70, color: '#177AD5'},
@@ -26,7 +28,8 @@ const ProfileScreen = ({navigation}) => {
   ];
 
   function editProfile() {
-    navigation.navigate('EditProfileScreen');
+    console.log('EditProfileScreen');
+    // navigation.navigate('EditProfileScreen');
   }
 
   function logOut() {
@@ -53,9 +56,9 @@ const ProfileScreen = ({navigation}) => {
         />
 
         <View style={styles.info}>
-          <Text style={styles.name}>John Doe</Text>
+          <Text style={styles.name}>{loginData}</Text>
           <Text style={styles.username}>mail@mail</Text>
-          <Text style={styles.username}>0812345677</Text>
+          <Text style={styles.username}>08123456789</Text>
         </View>
 
         <Button

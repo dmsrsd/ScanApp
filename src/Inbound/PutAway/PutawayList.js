@@ -10,6 +10,7 @@ import {
 import React, {useEffect, useState} from 'react';
 import {Divider, Text, Avatar, Card} from 'react-native-paper';
 import {useDispatch, useSelector} from 'react-redux';
+import {useIsFocused} from '@react-navigation/native';
 
 import {setItem} from '../../Redux/Reducers/PutAwaySlice';
 import {baseURL} from '../../utils/url';
@@ -18,16 +19,10 @@ import useDisableBackButton from '../../utils/useDisableBackButton';
 const screenWidth = Dimensions.get('window').width;
 
 const PutawayList = ({navigation}) => {
+  const isFocused = useIsFocused();
 
-  useEffect(() => {
-    getOrderList();
-  }, []);
-
-  
   useDisableBackButton('Anda tidak dapat kembali dari halaman ini.');
-
   const dispatch = useDispatch();
-
   const loginData = useSelector(state => state.loginData.item);
 
   const handlePress = item => {
@@ -42,8 +37,7 @@ const PutawayList = ({navigation}) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-
-  const getOrderList = async () => {
+  const getPutawayList = async () => {
     setLoading(true);
     const api = `${baseURL}/order-putaway/${loginData}`;
 
@@ -51,7 +45,7 @@ const PutawayList = ({navigation}) => {
       const response = await fetch(api);
       const responseData = await response.json();
 
-      console.log('res', responseData);
+      // console.log('res', responseData);
 
       setOrderList(responseData);
     } catch (error) {
@@ -65,8 +59,14 @@ const PutawayList = ({navigation}) => {
 
   const onRefresh = () => {
     setRefreshing(true);
-    getOrderList();
+    getPutawayList();
   };
+
+  useEffect(() => {
+    if (isFocused) {
+      getPutawayList();
+    }
+  }, [isFocused]);
 
   return (
     <View style={styles.container}>
@@ -85,7 +85,7 @@ const PutawayList = ({navigation}) => {
               data={orderListData.filter(item => item.is_scanned !== 'Y')}
               renderItem={({item}) => (
                 <TouchableOpacity onPress={() => handlePress(item)}>
-                  <Card style={{backgroundColor: 'lightgrey', margin: 10}}>
+                  <Card style={{backgroundColor: '#EEF7FF', margin: 10}}>
                     <Card.Title
                       title={`${item.gr_id}`}
                       titleStyle={{
@@ -94,7 +94,7 @@ const PutawayList = ({navigation}) => {
                       }}
                       subtitle={`Location To: ${item.location_to}`}
                       subtitleStyle={{
-                        color: 'black',
+                        color: 'grey',
                         fontWeight: 'bold',
                         fontSize: 15,
                       }}
@@ -107,16 +107,23 @@ const PutawayList = ({navigation}) => {
                       )}
                     />
                     <Card.Content>
-                      <Text
-                        variant="bodyMedium"
-                        style={{
-                          color: 'grey',
-                          left: 55,
-                          fontSize: 12,
-                          fontWeight: 'bold',
-                        }}>
-                        {`Scan Status: ${item.is_scanned}`}
-                      </Text>
+                      {item.is_scanned != null ? (
+                        <Text
+                          variant="bodyMedium"
+                          style={{
+                            color: '#15B392',
+                            fontWeight: 'bold',
+                            left: 55,
+                          }}>
+                          Sudah Di Scan
+                        </Text>
+                      ) : (
+                        <Text
+                          variant="bodyMedium"
+                          style={{color: 'red', fontWeight: 'bold', left: 55}}>
+                          Belum Di Scan
+                        </Text>
+                      )}
                     </Card.Content>
                   </Card>
                 </TouchableOpacity>

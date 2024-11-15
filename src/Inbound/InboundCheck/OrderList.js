@@ -11,6 +11,8 @@ import {
 import React, {useEffect, useState} from 'react';
 import {Text, Avatar, Card} from 'react-native-paper';
 import {useDispatch, useSelector} from 'react-redux';
+import {useIsFocused} from '@react-navigation/native';
+
 import {setItem} from '../../Redux/Reducers/OrderListSlice';
 import {baseURL} from '../../utils/url';
 import useDisableBackButton from '../../utils/useDisableBackButton';
@@ -22,14 +24,22 @@ const OrderList = ({navigation}) => {
 
   const dispatch = useDispatch();
   const loginData = useSelector(state => state.loginData.item);
+  const itemVehicle = useSelector(state => state.vehicleData.itemVehicle);
 
   const [orderListData, setOrderList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const isFocused = useIsFocused();
+
+  const [isScanValid, setScanValidity] = useState({});
 
   useEffect(() => {
-    getOrderList();
-  }, []);
+    console.log('itemVehicle', itemVehicle);
+
+    if (isFocused) {
+      getOrderList();
+    }
+  }, [isFocused]);
 
   const getOrderList = async () => {
     const api = `${baseURL}/order-list/${loginData}`;
@@ -37,6 +47,8 @@ const OrderList = ({navigation}) => {
     try {
       const response = await fetch(api);
       const responseData = await response.json();
+      console.log('res order', responseData);
+
       setOrderList(responseData.data);
     } catch (error) {
       console.error(error);
@@ -46,16 +58,73 @@ const OrderList = ({navigation}) => {
       setRefreshing(false);
     }
   };
+
   const onRefresh = () => {
     setRefreshing(true);
     getOrderList();
+
+    // Setelah refresh selesai
+    setRefreshing(false);
   };
 
-  const handlePress = item => {
+  const handlePress = (item, param) => {
     dispatch(setItem(item));
+
     navigation.navigate('InboundOrder', {
       screen: 'InputTransport',
+      params: {
+        param,
+      },
     });
+
+  };
+
+  useEffect(() => {
+    if (orderListData.length > 0) {
+      const fetchScanValidity = async () => {
+        const scanValidityResults = await Promise.all(
+          orderListData.map(item => checkQtyPlan(item.inbound_planning_no)),
+        );
+
+        // Update status scan validity berdasarkan hasil dari semua request
+        const validityMap = scanValidityResults.reduce(
+          (acc, {InboundNo, checkQtyScanValidity}) => {
+            acc[InboundNo] = checkQtyScanValidity;
+            return acc;
+          },
+          {},
+        );
+
+        setScanValidity(validityMap);
+      };
+
+      fetchScanValidity();
+    }
+  }, [orderListData]);
+
+  const checkQtyPlan = async InboundNo => {
+    try {
+      const response = await fetch(`${baseURL}/check-qty-plan/${InboundNo}`, {
+        method: 'GET',
+        headers: new Headers({
+          Cookie: 'XSRF-TOKEN=your_token_here; wms_session=your_session_here;',
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+
+      const result = await response.json();
+      const checkQtyScanValidity = result.data.every(
+        item => item.qty_scan && item.qty_scan !== 0,
+      );
+
+      return {InboundNo, checkQtyScanValidity};
+    } catch (error) {
+      console.error('Error fetching data for InboundNo:', InboundNo, error);
+      return {InboundNo, checkQtyScanValidity: false};
+    }
   };
 
   return (
@@ -73,12 +142,22 @@ const OrderList = ({navigation}) => {
             <FlatList
               data={orderListData}
               renderItem={({item}) => (
-                <TouchableOpacity onPress={() => handlePress(item)}>
-                  <Card style={{backgroundColor: 'lightgrey', margin: 10}}>
+                <TouchableOpacity
+                  onPress={() =>
+                    handlePress(item, isScanValid[item.inbound_planning_no])
+                  }>
+                  <Card
+                    style={{
+                      // backgroundColor: isScanValid[item.inbound_planning_no]
+                      //   ? '#EEF7FF'
+                      //   : 'lightgrey',
+                      margin: 10,
+                      backgroundColor: '#EEF7FF',
+                    }}>
                     <Card.Title
                       title={item.inbound_planning_no}
                       titleStyle={{color: 'black', fontWeight: 'bold'}}
-                      subtitle="Processed of Gudang..."
+                      subtitle="Proccessed by Gudang.."
                       subtitleStyle={{color: 'grey'}}
                       left={() => (
                         <Avatar.Icon
@@ -94,9 +173,32 @@ const OrderList = ({navigation}) => {
                       )}
                     />
                     <Card.Content>
-                      <Text variant="bodyMedium" style={{color: 'black'}}>
-                        {item.title}
-                      </Text>
+                      <Text
+                        variant="bodyMedium"
+                        style={{
+                          color: '#15B392',
+                          fontWeight: 'bold',
+                          left: 55,
+                        }}></Text>
+
+                      {/* {isScanValid[item.inbound_planning_no] ? (
+                        <Text
+                          variant="bodyMedium"
+                          style={{
+                            color: '#15B392',
+                            fontWeight: 'bold',
+                            left: 55,
+                          }}>
+                          Sudah Di Scan
+                        </Text>
+                      ) : (
+                        <Text
+                          variant="bodyMedium"
+                          style={{color: 'red', fontWeight: 'bold', left: 55}}>
+                          Belum Di Scan
+                        </Text>
+                      )} */}
+
                     </Card.Content>
                   </Card>
                 </TouchableOpacity>
